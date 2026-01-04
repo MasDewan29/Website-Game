@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Arcade – 10 Games Offline</title>
+<style>
+:root{--neon:#00ffff;--bg:#05050f}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:radial-gradient(circle at top,var(--bg),#000);color:var(--neon)}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--neon);box-shadow:0 0 20px var(--neon)}
+#menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:18px;padding:24px}
+.card{padding:22px;text-align:center;border-radius:16px;border:1px solid var(--neon);box-shadow:0 0 25px var(--neon);cursor:pointer;transition:.25s;background:rgba(0,255,255,.05)}
+.card:hover{transform:scale(1.08);box-shadow:0 0 45px var(--neon)}
+#game{display:none;text-align:center;padding:10px}
+canvas{background:#000;border:2px solid var(--neon);box-shadow:0 0 30px var(--neon);max-width:95vw}
+#hud{margin:10px;font-size:18px}
+button{background:transparent;color:var(--neon);border:1px solid var(--neon);padding:8px 16px;border-radius:8px;cursor:pointer;box-shadow:0 0 10px var(--neon)}
+button:hover{background:var(--neon);color:#000}
+.login{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000;z-index:99}
+.login input{padding:12px;border-radius:8px;border:none;font-size:18px;margin:10px;width:220px;text-align:center}
+small{color:#f66;height:20px}
+#loading{position:fixed;inset:0;display:none;justify-content:center;align-items:center;flex-direction:column;background:#000;z-index:98}
+#mobile{display:flex;gap:10px;justify-content:center;margin:10px}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+<h1>🎮 Neon Arcade</h1>
+<p>Nama Player (min 5 huruf)</p>
+<input id="nameInput" placeholder="Nama kamu">
+<button onclick="doLogin()">MASUK</button>
+<small id="msg"></small>
+</div>
+
+<div id="loading"><h1>Loading</h1><h2 id="lp">0%</h2></div>
+
+<header>
+<h2>Neon Arcade – 10 Games</h2>
+<div id="player"></div>
+</header>
+
+<div id="menu"></div>
+
+<div id="game">
+<button onclick="back()">⬅ Menu</button>
+<div id="hud">Score: 0</div>
+<canvas id="cv" width="400" height="400"></canvas>
+<div id="mobile">
+<button onclick="ml()">⬅</button>
+<button onclick="mu()">⬆</button>
+<button onclick="mr()">➡</button>
+</div>
+</div>
+
+<script>
+// LOGIN
+let playerName=localStorage.player||'';
+function doLogin(){const n=nameInput.value.trim();if(n.length<5){msg.textContent='Minimal 5 huruf';return}localStorage.player=n;location.reload();}
+if(playerName){login.style.display='none';player.textContent='👤 '+playerName}
+
+// MENU
+const games=[
+ ['snake','🐍 Snake'],['dino','🦖 Dino'],['aim','🎯 Aim'],['flappy','🐦 Flappy'],['brick','🧱 Brick'],
+ ['runner','🏃 Runner'],['memory','🧠 Memory'],['jump','⬆ Jump'],['fall','⚽ Falling'],['react','⚡ Reaction']
+];
+games.forEach(g=>menu.innerHTML+=`<div class="card" onclick="start('${g[0]}')">${g[1]}</div>`);
+
+// CORE
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let loop,score=0,current='',px=200,py=200,vy=0;
+
+function loading(cb){loadingDiv.style.display='flex';let p=0;lp.textContent='0%';const t=setInterval(()=>{p+=5;lp.textContent=p+'%';if(p>=100){clearInterval(t);loadingDiv.style.display='none';cb()}},40)}
+const loadingDiv=document.getElementById('loading');
+
+function start(t){loading(()=>startReal(t))}
+function startReal(t){menu.style.display='none';game.style.display='block';score=0;current=t;clearInterval(loop);
+ if(t==='snake')snake();if(t==='dino')dino();if(t==='aim')aim();if(t==='flappy')flappy();if(t==='brick')brick();
+ if(t==='runner')runner();if(t==='memory')memory();if(t==='jump')jump();if(t==='fall')fall();if(t==='react')react();}
+function back(){save();clearInterval(loop);game.style.display='none';menu.style.display='grid'}
+
+// HIGHSCORE
+function save(){const k='hs_'+current;const h=+localStorage[k]||0;if(score>h)localStorage[k]=score}
+function hudUpdate(extra=''){hud.textContent=`Score: ${score} | High: ${localStorage['hs_'+current]||0} ${extra}`}
+
+// MOBILE
+function ml(){px-=20}function mr(){px+=20}function mu(){vy=-12}
+
+// GAMES (simple but playable)
+function snake(){let x=200,y=200,dx=20,dy=0,fx=100,fy=100,tail=[];document.onkeydown=e=>{if(e.key=='ArrowUp'){dx=0;dy=-20}if(e.key=='ArrowDown'){dx=0;dy=20}if(e.key=='ArrowLeft'){dx=-20;dy=0}if(e.key=='ArrowRight'){dx=20;dy=0}};
+ loop=setInterval(()=>{ctx.clearRect(0,0,400,400);x+=dx;y+=dy;tail.push({x,y});if(tail.length>score+3)tail.shift();ctx.fillStyle='#0f0';tail.forEach(p=>ctx.fillRect(p.x,p.y,18,18));ctx.fillStyle='red';ctx.fillRect(fx,fy,18,18);
+ if(x==fx&&y==fy){score++;fx=Math.floor(Math.random()*20)*20;fy=Math.floor(Math.random()*20)*20}
+ if(x<0||y<0||x>380||y>380||tail.slice(0,-1).some(p=>p.x==x&&p.y==y)){alert('Game Over');back()}hudUpdate()},120)}
+
+function dino(){px=60;py=300;vy=0;let ox=400;document.onkeydown=e=>{if(e.key==' '||e.key=='ArrowUp')vy=-14};loop=setInterval(()=>{ctx.clearRect(0,0,400,400);vy+=0.8;py+=vy;if(py>300){py=300;vy=0}ox-=6;if(ox<-30){ox=400;score++}
+ ctx.fillStyle='cyan';ctx.fillRect(px,py,30,30);ctx.fillStyle='magenta';ctx.fillRect(ox,300,30,30);
+ if(px+30>ox&&px<ox+30&&py+30>300){alert('Game Over');back()}hudUpdate()},30)}
+
+function aim(){let tx=Math.random()*360,ty=Math.random()*360,t=30;cv.onclick=e=>{const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;if(Math.hypot(x-tx,y-ty)<20){score++;tx=Math.random()*360;ty=Math.random()*360}};
+ loop=setInterval(()=>{ctx.clearRect(0,0,400,400);ctx.beginPath();ctx.arc(tx,ty,18,0,Math.PI*2);ctx.fillStyle='red';ctx.fill();t-=0.05;if(t<=0){alert('Time Up');back()}hudUpdate(`| Time:${t.toFixed(1)}`)},20)}
+
+function flappy(){let y=200,v=0,px2=400,g=120;document.onkeydown=e=>{if(e.key==' '||e.key=='ArrowUp')v=-8};loop=setInterval(()=>{ctx.clearRect(0,0,400,400);v+=0.5;y+=v;px2-=4;if(px2<-60){px2=400;score++}
+ ctx.fillStyle='yellow';ctx.fillRect(80,y,30,30);ctx.fillStyle='lime';ctx.fillRect(px2,0,60,200-g);ctx.fillRect(px2,200+g,60,400);
+ if(y<0||y>370||80+30>px2&&80<px2+60&&(y<200-g||y>200+g)){alert('Game Over');back()}hudUpdate()},20)}
+
+function brick(){let bx=200,by=300,bvx=3,bvy=-3,px=160;br=[];for(let i=0;i<5;i++)for(let j=0;j<3;j++)br.push({x:i*75+20,y:j*30+40,on:1});cv.onmousemove=e=>px=e.offsetX-40;
+ loop=setInterval(()=>{ctx.clearRect(0,0,400,400);bx+=bvx;by+=bvy;if(bx<0||bx>388)bvx=-bvx;if(by<0)bvy=-bvy;if(by>390){alert('Game Over');back()}
+ if(bx>px&&bx<px+80&&by>350)bvy=-bvy;ctx.fillStyle='cyan';ctx.fillRect(px,360,80,10);ctx.fillStyle='red';ctx.fillRect(bx,by,12,12);
+ br.forEach(b=>{if(b.on&&bx>b.x&&bx<b.x+60&&by>b.y&&by<b.y+20){b.on=0;bvy=-bvy;score++}if(b.on){ctx.fillStyle='magenta';ctx.fillRect(b.x,b.y,60,20)}});hudUpdate()},20)}
+
+function runner(){px=200;let obs=[];loop=setInterval(()=>{ctx.clearRect(0,0,400,400);obs.push({x:Math.random()*380,y:0});obs.forEach(o=>{o.y+=5;ctx.fillRect(o.x,o.y,20,20);if(o.y>380){score++}});obs=obs.filter(o=>o.y<400);
+ ctx.fillStyle='cyan';ctx.fillRect(px,360,30,30);if(obs.some(o=>o.y>350&&Math.abs(o.x-px)<20)){alert('Game Over');back()}hudUpdate()},30)}
+
+function memory(){let seq=[Math.floor(Math.random()*4)],i=0,show=true;loop=setInterval(()=>{ctx.clearRect(0,0,400,400);for(let k=0;k<4;k++){ctx.strokeRect(k*100,0,100,400)}if(show){ctx.fillRect(seq[i]*100,0,100,400)}},500);
+ cv.onclick=e=>{const x=Math.floor(e.offsetX/100);if(x===seq[i]){i++;if(i>=seq.length){score++;seq.push(Math.floor(Math.random()*4));i=0}}else{alert('Game Over');back()}hudUpdate()}}
+
+function jump(){px=200;py=360;vy=0;document.onkeydown=e=>{if(e.key==' '||e.key=='ArrowUp')vy=-15};loop=setInterval(()=>{ctx.clearRect(0,0,400,400);vy+=1;py+=vy;if(py>360){py=360;vy=0;score++}ctx.fillRect(px,py,30,30);hudUpdate()},30)}
+
+function fall(){let balls=[];loop=setInterval(()=>{ctx.clearRect(0,0,400,400);balls.push({x:Math.random()*380,y:0});balls.forEach(b=>{b.y+=6;ctx.fillRect(b.x,b.y,20,20);if(b.y>360&&Math.abs(b.x-px)<20){score++}});balls=balls.filter(b=>b.y<400);ctx.fillRect(px,360,30,30);hudUpdate()},30)}
+
+function react(){let ready=false;setTimeout(()=>ready=true,Math.random()*3000+1000);cv.onclick=()=>{if(ready){score++;alert('Good!');back()}else{alert('Too Soon');back()}};loop=setInterval(()=>{ctx.clearRect(0,0,400,400);ctx.fillText(ready?'CLICK!':'WAIT...',160,200);hudUpdate()},30)}
+</script>
+</body>
+</html>
